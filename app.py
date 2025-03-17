@@ -11,13 +11,25 @@ st.title("接客データ分析アプリ")
 
 # DBから User テーブルの distinct な store_id を取得して、店舗選択のオプションとする
 def get_store_options():
+    st.write("DEBUG: Entering get_store_options()")
     session = SessionLocal()
+    st.write("DEBUG: session created")
     try:
+        st.write("DEBUG: About to query store_id...")
         stores = session.query(User.store_id).distinct().all()
+        st.write("DEBUG: Query finished. Raw result:", stores)
+
         store_list = sorted([s[0] for s in stores if s[0] is not None])
+        st.write("DEBUG: store_list:", store_list)
+        return store_list
+    except Exception as e:
+        st.error(f"店舗情報の取得中にエラーが発生しました: {e}")
+        st.write("DEBUG: Exception details:", str(e))
+        return []
     finally:
+        st.write("DEBUG: closing session")
         session.close()
-    return store_list
+    
 
 store_options = get_store_options()
 store = st.sidebar.selectbox("店舗を選択", store_options)
@@ -49,11 +61,18 @@ else:
 # DB確認タブで、選択された店舗(store_id)とカテゴリ(category_id)に基づきDBからデータ取得
 with tabs[2]:
     st.header("DB確認")
+    # デバッグ用に選択された値を表示
+    st.write("DEBUG: 選択された店舗(store_id):", store)
+    st.write("DEBUG: 選択されたカテゴリ(category_id):", category_mapping.get(category))
+
     cat_id = category_mapping.get(category)
-    df = get_data(store, cat_id)
-    if df.empty:
-        st.write("DBのデータがありません。")
-    else:
-        st.write("DBから取得したデータ（最初の5行）:")
-        st.dataframe(df.head(5))
+    try:
+        df = get_data(store, cat_id)
+        if df.empty:
+            st.write("DBのデータがありません。")
+        else:
+            st.write("DBから取得したデータ（最初の5行）:")
+            st.dataframe(df.head(5))
+    except Exception as e:
+        st.error(f"データ取得中にエラーが発生しました: {e}")
 
