@@ -1,11 +1,8 @@
 import pandas as pd
 import streamlit as st
-import os
-from dotenv import load_dotenv
-from db import get_data
-from models import SessionLocal, User
-
-load_dotenv()  # .env ファイルの内容を読み込む
+from dependencies import get_db
+from models import User
+from db import SessionLocal
 
 st.title("接客データ分析アプリ")
 
@@ -67,7 +64,7 @@ with tabs[2]:
 
     cat_id = category_mapping.get(category)
     try:
-        df = get_data(store, cat_id)
+        df = get_db(store, cat_id)
         if df.empty:
             st.write("DBのデータがありません。")
         else:
