@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 from dependencies import get_db
 from models import User
+from data_access import get_data
 from db import SessionLocal
 
 st.title("接客データ分析アプリ")
@@ -41,7 +42,7 @@ if st.sidebar.button("分析を実行"):
 category_mapping = {"ロボット掃除機": 1, "商品X": 2, "商品Y": 3, "商品Z": 4}
 
 # タブに「判断軸分析」「店員呼び出し分析」「DB確認」を追加
-tabs = st.tabs(["判断軸分析", "店員呼び出し分析", "DB確認"])
+tabs = st.tabs(["判断軸分析", "店員呼び出し分析", "DB接続確認"])
 
 if category in ["商品X", "商品Y", "商品Z"]:
     message = f"{category} のデータがありません"
@@ -64,7 +65,8 @@ with tabs[2]:
 
     cat_id = category_mapping.get(category)
     try:
-        df = get_db(store, cat_id)
+        df = get_data(store, cat_id)
+        print("取得したデータフレーム:", df)
         if df.empty:
             st.write("DBのデータがありません。")
         else:
