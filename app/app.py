@@ -1,6 +1,9 @@
 import streamlit as st
 from data_access import get_data
 from options import get_store_options, get_category_options
+from ml_model import get_correlation_heatmap
+from data_merge import merge_data
+from data_modify import transform_data
 
 st.title("接客データ分析アプリ")
 
@@ -18,7 +21,7 @@ if st.sidebar.button("分析を実行"):
     st.sidebar.write("選択された家電カテゴリ:", category)
 
 # タブを用意
-tabs = st.tabs(["判断軸分析", "店員呼び出し分析", "DB接続確認"])
+tabs = st.tabs(["判断軸分析", "店員呼び出し分析", "DB接続確認", "機械学習"])
 
 
 # タブ1: 判断軸分析
@@ -51,3 +54,28 @@ with tabs[2]:
         st.error(f"データ取得中にエラーが発生しました: {e}")
         st.error(f"エラー詳細: {e}")
 
+# タブ4:機械学習
+with tabs[3]:
+    st.header("機械学習")
+    
+    st.write("データのマージ結果")
+    df_merged = merge_data()
+    st.dataframe(df_merged.head())
+
+    st.write("データのエンコーディング結果")
+    df_encoded = transform_data()
+    st.dataframe(df_encoded.head())
+
+
+    if st.button("相関ヒートマップの描画を実行"):
+        try:
+            df_encoded = transform_data()
+            st.write("取得したデータ（先頭5行）:", df_encoded.head())
+            if df_encoded is None or df_encoded.empty:
+                st.error("機械学習用のデータがありません。")
+            else:
+                heatmap_fig = get_correlation_heatmap(df_encoded)
+                st.pyplot(heatmap_fig)
+        except Exception as e:
+            st.error(f"相関ヒートマップの描画中にエラーが発生しました: {e}")
+    
