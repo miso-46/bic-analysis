@@ -43,7 +43,7 @@ def transform_data():
         "q4_answer_categorical":  "app_features",           # (4) ロボット掃除機のアプリで欲しい機能はどれですか？
         "q5_answer_boolean":      "wipe_cleaning",          # (5) 拭き掃除もロボット掃除機に任せたいですか？
         "q6_answer_boolean":      "auto_dustbin",           # (6) 自動ゴミ収集機能が欲しいですか？
-        "q7_answer_numeric":      "quiet_mode",             # (7) 吸引力が落ちても静かに掃除して欲しい
+        "q7_answer_boolean":      "quiet_mode",             # (7) 吸引力が落ちても静かに掃除して欲しい
         "q8_answer_numeric":      "less_collision",         # (8) 細かい場所の掃除制度は下がっても衝突回数が減る方がいい
         "q9_answer_numeric":      "fully_automated",        # (9) 掃除はロボット掃除機に全て任せたい
         "q10_answer_numeric":     "detailed_suction",       # (10) 部屋全体・部屋の隅・壁際などの細かい場所でもしっかり吸引してほしい？
@@ -81,7 +81,16 @@ def transform_data():
         dummy_na=True,    # 欠損値も別カテゴリとして扱う
         drop_first=True   # 多重共線性を避けるため、最初のカテゴリを削除
     )
-    
+    df_encoded.rename(
+        columns={
+            "gender_2.0": "gender_M",
+            "gender_3.0": "gender_F",
+            "gender_nan": "gender_missing"
+        },
+        inplace=True
+    )
+
+
     # 時刻情報の分解
     # timeカラムをdatetime型に変換
     df_encoded["reception_time"] = pd.to_datetime(df_encoded["reception_time"])
@@ -103,8 +112,14 @@ def transform_data():
 
     # ワンホットエンコーディングした列を整数型に変換
     for col in df_encoded.columns:
-        if col.startswith(("app_features", "weekday_")):
+        if col.startswith(("app_features", "weekday_", "gender_")):
             df_encoded[col] = df_encoded[col].astype(int)
+
+    # ブール列を数値に変換.True が 1 に、False が 0 に
+    bool_cols = ["pet_room", "carpet_rug", "wipe_cleaning", "auto_dustbin", "quiet_mode"]
+    for col in bool_cols:
+        df_encoded[col] = df_encoded[col].astype('Int64')
+
 
     # 不要な時刻カラムの削除（reception_time と user_time）
     df_encoded.drop(columns=["reception_time", "user_time"], inplace=True)

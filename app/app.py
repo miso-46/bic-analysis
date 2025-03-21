@@ -1,9 +1,10 @@
 import streamlit as st
+import numpy as np
 from data_access import get_data
 from options import get_store_options, get_category_options
-from ml_model import get_correlation_heatmap
 from data_merge import merge_data
 from data_modify import transform_data
+from ml_model import get_correlation_heatmap, get_vif, get_tsne_plot, meanshift_clustering, evaluate_random_forest_classifier
 
 st.title("接客データ分析アプリ")
 
@@ -74,8 +75,64 @@ with tabs[3]:
             if df_encoded is None or df_encoded.empty:
                 st.error("機械学習用のデータがありません。")
             else:
-                heatmap_fig = get_correlation_heatmap(df_encoded)
-                st.pyplot(heatmap_fig)
+                st.session_state.heatmap_fig = get_correlation_heatmap(df_encoded)
         except Exception as e:
             st.error(f"相関ヒートマップの描画中にエラーが発生しました: {e}")
+    if "heatmap_fig" in st.session_state:
+         st.pyplot(st.session_state.heatmap_fig)
+    
+
+    # 多重共線性（VIF）の測定ボタン
+    if st.button("多重共線性（VIF）を測定"):
+        try:
+            df_numeric = df_encoded.select_dtypes(include=[np.number]).dropna().astype(float)
+            if df_numeric.empty:
+                st.error("数値カラムが存在しないか、欠損値のみのためVIFを計算できません。")
+            else:
+                st.session_state.vif_df = get_vif(df_numeric)
+        except Exception as e:
+            st.error(f"多重共線性（VIF）計算中にエラーが発生しました: {e}")
+    if "vif_df" in st.session_state:
+         st.write("多重共線性（VIF）計算結果:")
+         st.dataframe(st.session_state.vif_df)
+
+    # t-SNE の散布図を描画するボタン
+    if st.button("t-SNE の散布図を描画"):
+        try:
+            st.session_state.tsne_fig = get_tsne_plot(df_encoded)
+        except Exception as e:
+            st.error(f"t-SNE の散布図を描画中にエラーが発生しました: {e}")
+    if "tsne_fig" in st.session_state:
+         st.pyplot(st.session_state.tsne_fig)
+
+    # MeanShift（教師なし学習）によるクラスタリングを実施し、t-SNEの散布図にクラスタごとに色分け
+    # 並行座標プロットを表示する
+    if st.button("MeanShiftクラスタリングを実行"):
+        try:
+            tsne_ms_fig, parallel_fig, n_clusters_ms = meanshift_clustering(df_encoded)
+            st.session_state.tsne_ms_fig = tsne_ms_fig
+            st.session_state.parallel_fig = parallel_fig
+            st.session_state.n_clusters_ms = n_clusters_ms
+        except Exception as e:
+            st.error(f"MeanShiftクラスタリング中にエラーが発生しました: {e}")
+    if ("tsne_ms_fig" in st.session_state and 
+        "n_clusters_ms" in st.session_state and
+        "parallel_fig" in st.session_state):
+         st.write(f"MeanShiftの推定クラスタ数: {st.session_state.n_clusters_ms}")
+         st.pyplot(st.session_state.tsne_ms_fig)
+         st.pyplot(st.session_state.parallel_fig)
+
+    # MeanShiftのクラスタレベルを疑似的な「目的変数」として分類モデルを作成、疑似的どの特徴量がクラスタ分割に寄与しているか」を可視化
+    if  st.button("モデルの作成（ランダムフォレスト）"):
+        try:
+            # クラスタラベル以外の列を特徴量として使用（不要なクラスタ列が存在する場合は除外）
+            X = df_for_cluster.drop(columns=["cluster", "cluster_bgmm", "cluster_ms"], errors="ignore").copy()
+            y = labels_bgmm  # VBGMMなどで得たクラスタラベルを目的変数として設定
+            
+            fig_cm, class_rep, feature_importances = evaluate_random_forest_classifier(X, y)
+            st.pyplot(fig_cm)
+            st.text(class_rep)
+            st.dataframe(feature_importances)
+        except Exception as e:
+            st.error(f"ランダムフォレスト評価中にエラーが発生しました: {e}")
     
