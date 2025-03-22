@@ -125,9 +125,12 @@ def transform_data():
     df_encoded.drop(columns=["reception_time", "user_time"], inplace=True)
     print(df_encoded.head(5))
 
+    # タブ1の商品名のフィルタリングにはreception_category_idが必要なため、idの削除前にコピーをしておく
+    df_encoded_with_id = df_encoded.copy()
+
     # id類（user_id、category_id、reception_id）はリーケージの原因となりえるため、すべて削除する
     df_encoded = df_encoded.drop(columns=["user_id", "reception_category_id", "reception_id"], errors="ignore")
    
-    return df_encoded
+    return df_encoded, df_encoded_with_id
 
 

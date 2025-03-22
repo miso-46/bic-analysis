@@ -16,10 +16,10 @@ store = st.sidebar.selectbox("店舗を選択", store_options)
 category_options = get_category_options()
 category = st.sidebar.selectbox("家電カテゴリを選択", category_options)
 
-# 分析実行ボタン
-if st.sidebar.button("分析を実行"):
-    st.sidebar.write("選択された店舗:", store)
-    st.sidebar.write("選択された家電カテゴリ:", category)
+# # 分析実行ボタン
+# if st.sidebar.button("分析を実行"):
+#     st.sidebar.write("選択された店舗:", store)
+#     st.sidebar.write("選択された家電カテゴリ:", category)
 
 # タブを用意
 tabs = st.tabs(["判断軸分析", "店員呼び出し分析", "DB接続確認", "機械学習"])
@@ -27,7 +27,48 @@ tabs = st.tabs(["判断軸分析", "店員呼び出し分析", "DB接続確認",
 
 # タブ1: 判断軸分析
 with tabs[0]:
-    st.write("ここに判断軸分析のコンテンツを追加します。")
+    st.write("サイドバーで選択した店舗と商品について分析します")
+    if st.button("判断軸分析の実行"):
+        with st.spinner("分析の実行中"):
+            # 変換済みデータを取得(idをドロップしていないデータ)DataFrame ではなくタプルを返している
+            # 返り値を2つの変数にアンパックしていないと、df_encoded がタプルになる
+            df_encoded, df_encoded_with_id = transform_data()
+            
+            # フィルタリング：店舗と商品カテゴリに合致するデータのみを抽出
+            filtered_df = df_encoded_with_id[
+                (df_encoded_with_id["store_id"] == store) & 
+                (df_encoded_with_id["reception_category_id"] == category)
+            ]
+
+            # 正しくフィルタリングができているかを確認
+            st.dataframe(filtered_df.head()) 
+
+            # id類（user_id、category_id、reception_id）はリーケージの原因となりえるため、すべて削除する
+            df_encoded_filtered = filtered_df.drop(
+                columns=["user_id", "reception_category_id", "reception_id"], 
+                errors="ignore"
+            )
+   
+            # クラスタリング実行中
+            with st.spinner("クラスタリング実行中"):
+                tsne_ms_fig, parallel_fig, n_clusters_ms, df_cluster = meanshift_clustering(df_encoded_filtered)
+            
+            # モデリング実行中
+            with st.spinner("モデリングの実行中"):
+                # df_cluster は MeanShift の結果（"cluster_ms" 列付き）
+                # 特徴量 X として不要なクラスタ列を除外、目的変数 y は "cluster_ms" を使用
+                X = df_cluster.drop(columns=["cluster", "cluster_bgmm", "cluster_ms"], errors="ignore").copy()
+                y = df_cluster["cluster_ms"].astype(str)
+                fig_cm, class_rep, feature_importances = evaluate_random_forest_classifier(X, y)
+                
+        st.success("分析が完了しました。")
+        st.write(f"MeanShiftの推定クラスタ数: {n_clusters_ms}")
+        st.pyplot(tsne_ms_fig)
+        st.pyplot(parallel_fig)
+        st.pyplot(fig_cm)
+        st.text(class_rep)
+        st.dataframe(feature_importances)
+
 
 # タブ2: 店員呼び出し分析
 with tabs[1]:
@@ -64,7 +105,7 @@ with tabs[3]:
     st.dataframe(df_merged.head())
 
     st.write("データのエンコーディング結果")
-    df_encoded = transform_data()
+    df_encoded, df_encoded_with_id = transform_data() # タプルで取得
     st.dataframe(df_encoded.head())
 
 
