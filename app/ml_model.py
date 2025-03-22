@@ -129,3 +129,50 @@ def evaluate_random_forest_classifier(X: pd.DataFrame, y, test_size: float = 0.3
     
     return fig, class_rep, feature_importances
 
+
+# 年齢とアンケート結果の相関をみる関数
+def get_age_analysis_plots(df_cluster: pd.DataFrame, survey_columns: list = None):
+    if survey_columns is None:
+        # survey_columns が指定されなければ、df_cluster のうち "age" と "cluster_ms" を除外した数値型カラムを自動取得
+        survey_columns = [col for col in df_cluster.columns 
+                          if col not in ["age", "cluster_ms"] 
+                          and pd.api.types.is_numeric_dtype(df_cluster[col])]
+    else:
+        # 指定された survey_columns から数値型のもののみフィルタリング
+        survey_columns = [col for col in survey_columns if pd.api.types.is_numeric_dtype(df_cluster[col])]
+    
+    # 各クラスタごとの age 統計量（平均、第一四分位、中央値、第三四分位）を計算
+    cluster_age_stats = df_cluster.groupby("cluster_ms")["age"].agg(
+        Mean="mean",
+        Q1=lambda x: x.quantile(0.25),
+        Median="median",
+        Q3=lambda x: x.quantile(0.75)
+    )
+    
+    # 箱ひげ図の作成
+    fig_box, ax_box = plt.subplots(figsize=(10, 6))
+    sns.boxplot(x="cluster_ms", y="age", data=df_cluster, ax=ax_box)
+    ax_box.set_title("各クラスタの年齢分布")
+    
+    # 年齢を年齢層に分類（コピーを作成して元データを変更しないようにする）
+    df_cluster_copy = df_cluster.copy()
+    df_cluster_copy["age_group"] = pd.cut(
+        df_cluster_copy["age"],
+        bins=[0, 20, 30, 40, 50, 60, 100],
+        labels=["<20", "20-30", "30-40", "40-50", "50-60", "60+"]
+    )
+    
+    # 年齢層ごとにアンケート結果と age の平均値を計算
+    grouped = df_cluster_copy.groupby("age_group")[survey_columns + ["age"]].mean()
+    
+    # 相関行列を計算（年齢とアンケート結果間の相関）
+    corr_matrix = grouped.corr()
+    
+    # 相関ヒートマップの作成
+    fig_corr, ax_corr = plt.subplots(figsize=(10, 8))
+    sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm", ax=ax_corr)
+    ax_corr.set_title("年齢層ごとのアンケート結果と年齢の相関")
+    
+    return cluster_age_stats, fig_box, grouped, corr_matrix, fig_corr
+
+

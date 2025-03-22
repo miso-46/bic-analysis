@@ -4,7 +4,8 @@ from data_access import get_data
 from options import get_store_options, get_category_options
 from data_merge import merge_data
 from data_modify import transform_data
-from ml_model import get_correlation_heatmap, get_vif, get_tsne_plot, meanshift_clustering, evaluate_random_forest_classifier
+from ml_model import get_correlation_heatmap, get_vif, get_tsne_plot, meanshift_clustering, evaluate_random_forest_classifier,get_age_analysis_plots
+from chatgpt import interpret_corr_matrix
 
 st.title("接客データ分析アプリ")
 
@@ -53,6 +54,10 @@ with tabs[0]:
             with st.spinner("クラスタリング実行中"):
                 tsne_ms_fig, parallel_fig, n_clusters_ms, df_cluster = meanshift_clustering(df_encoded_filtered)
             
+            # クラスタラベルを「Cluster_～」に変換
+            df_cluster["cluster_ms"] = df_cluster["cluster_ms"].astype(str)
+            df_cluster["cluster_ms"] = "Cluster_" + df_cluster["cluster_ms"]
+
             # モデリング実行中
             with st.spinner("モデリングの実行中"):
                 # df_cluster は MeanShift の結果（"cluster_ms" 列付き）
@@ -111,7 +116,7 @@ with tabs[3]:
 
     if st.button("相関ヒートマップの描画を実行"):
         try:
-            df_encoded = transform_data()
+            df_encoded, df_encoded_with_id = transform_data()
             st.write("取得したデータ（先頭5行）:", df_encoded.head())
             if df_encoded is None or df_encoded.empty:
                 st.error("機械学習用のデータがありません。")
@@ -151,6 +156,11 @@ with tabs[3]:
     if st.button("MeanShiftクラスタリングを実行"):
         try:
             tsne_ms_fig, parallel_fig, n_clusters_ms, df_cluster = meanshift_clustering(df_encoded)
+            
+            # クラスタラベルに "Cluster_" を付ける
+            df_cluster["cluster_ms"] = df_cluster["cluster_ms"].astype(str)
+            df_cluster["cluster_ms"] = "Cluster_" + df_cluster["cluster_ms"]
+            
             st.session_state.tsne_ms_fig = tsne_ms_fig
             st.session_state.parallel_fig = parallel_fig
             st.session_state.n_clusters_ms = n_clusters_ms
@@ -182,6 +192,33 @@ with tabs[3]:
                 st.pyplot(fig_cm)
                 st.text(class_rep)
                 st.dataframe(feature_importances)
+
+                # 年齢分析のプロットを取得して表示
+                cluster_age_stats, fig_box, grouped, corr_matrix, fig_corr = get_age_analysis_plots(df_cluster)
+                st.write("各クラスタの年齢統計:")
+                st.dataframe(cluster_age_stats)
+                st.pyplot(fig_box)
+                st.write("年齢層ごとのアンケート結果と年齢の平均:")
+                st.dataframe(grouped)
+                st.write("相関行列:")
+                st.dataframe(corr_matrix)
+                st.pyplot(fig_corr)
+
+                # 相関行列をセッションステートに保持
+                st.session_state.corr_matrix = corr_matrix
+
         except Exception as e:
             st.error(f"ランダムフォレスト評価中にエラーが発生しました: {e}")
     
+    # GPTによる相関行列分析の実行ボタン
+    st.write("GPTによる分析はモデルの作成実行後にクリックしてください")
+    if st.button("GPTによる相関行列分析を実行"):
+        try:
+            if "corr_matrix" not in st.session_state:
+                st.error("相関行列が見つかりません。先にモデル作成を実行してください。")
+            else:
+                interpretation = interpret_corr_matrix(st.session_state.corr_matrix)
+                st.write("ChatGPT の解釈:")
+                st.write(interpretation)
+        except Exception as e:
+            st.error(f"GPTによる分析中にエラーが発生しました: {e}")
