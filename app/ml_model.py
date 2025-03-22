@@ -98,7 +98,7 @@ def meanshift_clustering(data: pd.DataFrame, quantile: float = 0.2, n_samples: i
     ax_parallel.set_xticklabels(ax_parallel.get_xticklabels(), rotation=45, ha='right')
     ax_parallel.set_title(f"Parallel Coordinates Plot by MeanShift (n_clusters={n_clusters_ms})")
     
-    return fig_tsne, fig_parallel, n_clusters_ms
+    return fig_tsne, fig_parallel, n_clusters_ms, df_for_cluster # df_for_clusterにはクラスタリングで分類したカラムが結合されている
 
 
 # ランダムフォレストによってモデルを作成、混同行列、特徴量重要度を返す
