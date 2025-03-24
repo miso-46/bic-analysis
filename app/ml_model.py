@@ -162,17 +162,32 @@ def get_age_analysis_plots(df_cluster: pd.DataFrame, survey_columns: list = None
         labels=["<20", "20-30", "30-40", "40-50", "50-60", "60+"]
     )
     
-    # 年齢層ごとにアンケート結果と age の平均値を計算
+    # 年齢層ごとのカラムの平均値を計算
     grouped = df_cluster_copy.groupby("age_group")[survey_columns + ["age"]].mean()
     
-    # 相関行列を計算（年齢とアンケート結果間の相関）
+    # 相関行列を計算（年齢とそれ以外の結果間の相関）
     corr_matrix = grouped.corr()
     
     # 相関ヒートマップの作成
     fig_corr, ax_corr = plt.subplots(figsize=(10, 8))
     sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="coolwarm", ax=ax_corr)
     ax_corr.set_title("年齢層ごとのアンケート結果と年齢の相関")
+
+    # 各クラスタごとに、age と survey_columns の相関を計算する
+    cluster_age_corr_dict = {}
+    for cl in df_cluster["cluster_ms"].unique():
+        cluster_data = df_cluster[df_cluster["cluster_ms"] == cl]
+        # 使用するカラム：survey_columns と "age"
+        subset_cols = [col for col in survey_columns if col in cluster_data.columns] + ["age"]
+        if len(subset_cols) < 2:
+            continue
+        # 相関行列の "age" 行を取得
+        corr_series = cluster_data[subset_cols].corr().loc["age"]
+        # age と age の相関は常に1なので除外
+        corr_series = corr_series.drop("age")
+        cluster_age_corr_dict[cl] = corr_series
+    cluster_age_corr_df = pd.DataFrame(cluster_age_corr_dict)
     
-    return cluster_age_stats, fig_box, grouped, corr_matrix, fig_corr
+    return cluster_age_stats, fig_box, grouped, corr_matrix, fig_corr, cluster_age_corr_df
 
 

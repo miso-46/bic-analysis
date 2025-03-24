@@ -5,7 +5,7 @@ from options import get_store_options, get_category_options
 from data_merge import merge_data
 from data_modify import transform_data
 from ml_model import get_correlation_heatmap, get_vif, get_tsne_plot, meanshift_clustering, evaluate_random_forest_classifier,get_age_analysis_plots
-from chatgpt import interpret_corr_matrix
+from chatgpt import interpret_grouped_data
 
 st.title("接客データ分析アプリ")
 
@@ -183,42 +183,74 @@ with tabs[3]:
             else:
                 # MeanShiftクラスタリングで作成した df_for_cluster を利用
                 df_cluster = st.session_state.df_for_cluster
+                # st.write(df_cluster)
 
                 # クラスタラベル以外の列を特徴量として使用（不要なクラスタ列が存在する場合は除外）
                 X = df_cluster.drop(columns=["cluster_ms"], errors="ignore").copy()
                 y = df_cluster["cluster_ms"].astype(str)
                 
                 fig_cm, class_rep, feature_importances = evaluate_random_forest_classifier(X, y)
-                st.pyplot(fig_cm)
-                st.text(class_rep)
-                st.dataframe(feature_importances)
+                # セッションステートに保存
+                st.session_state.fig_cm = fig_cm
+                st.session_state.class_rep = class_rep
+                st.session_state.feature_importances = feature_importances
 
                 # 年齢分析のプロットを取得して表示
-                cluster_age_stats, fig_box, grouped, corr_matrix, fig_corr = get_age_analysis_plots(df_cluster)
-                st.write("各クラスタの年齢統計:")
-                st.dataframe(cluster_age_stats)
-                st.pyplot(fig_box)
-                st.write("年齢層ごとのアンケート結果と年齢の平均:")
-                st.dataframe(grouped)
-                st.write("相関行列:")
-                st.dataframe(corr_matrix)
-                st.pyplot(fig_corr)
-
-                # 相関行列をセッションステートに保持
+                cluster_age_stats, fig_box, grouped, corr_matrix, fig_corr, cluster_age_corr_df = get_age_analysis_plots(df_cluster)
+                st.session_state.cluster_age_stats = cluster_age_stats
+                st.session_state.fig_box = fig_box
+                st.session_state.grouped = grouped
                 st.session_state.corr_matrix = corr_matrix
+                st.session_state.fig_corr = fig_corr
+                st.session_state.cluster_age_corr_df = cluster_age_corr_df
 
         except Exception as e:
             st.error(f"ランダムフォレスト評価中にエラーが発生しました: {e}")
+
+    # すでにセッションステートに保存されている場合は、以下で表示
+    if "fig_cm" in st.session_state:
+        st.pyplot(st.session_state.fig_cm)
+        st.text(st.session_state.class_rep)
+        st.dataframe(st.session_state.feature_importances)
+
+    if "cluster_age_stats" in st.session_state:
+        st.write("各クラスタの年齢統計:")
+        st.dataframe(st.session_state.cluster_age_stats)
+        st.pyplot(st.session_state.fig_box)
+        st.write("年齢層ごとのアンケート結果と年齢の平均:")
+        st.dataframe(st.session_state.grouped)
+        st.write("相関行列:")
+        st.dataframe(st.session_state.corr_matrix)
+        st.pyplot(st.session_state.fig_corr)
+        st.write("各クラスタにおける年齢と他因子の相関:")
+        st.dataframe(st.session_state.cluster_age_corr_df)
     
-    # GPTによる相関行列分析の実行ボタン
-    st.write("GPTによる分析はモデルの作成実行後にクリックしてください")
-    if st.button("GPTによる相関行列分析を実行"):
+
+    # # GPTによる相関行列分析の実行ボタン
+    # st.write("GPTによる分析はモデルの作成実行後にクリックしてください")
+    # if st.button("GPTによる相関行列分析を実行"):
+    #     try:
+    #         if "corr_matrix" not in st.session_state:
+    #             st.error("相関行列が見つかりません。先にモデル作成を実行してください。")
+    #         else:
+    #             interpretation = interpret_corr_matrix(st.session_state.corr_matrix)
+    #             st.write("ChatGPT の解釈:")
+    #             st.write(interpretation)
+    #     except Exception as e:
+    #         st.error(f"GPTによる分析中にエラーが発生しました: {e}")
+
+    # GPTによる "grouped" 分析の実行ボタン
+    st.write("GPTによる grouped データ分析はモデルの作成実行後にクリックしてください")
+    if st.button("GPTによる grouped データ分析を実行"):
         try:
-            if "corr_matrix" not in st.session_state:
-                st.error("相関行列が見つかりません。先にモデル作成を実行してください。")
+            if "grouped" not in st.session_state:
+                st.error("groupedデータが見つかりません。先にモデル作成を実行してください。")
             else:
-                interpretation = interpret_corr_matrix(st.session_state.corr_matrix)
+                from chatgpt import interpret_grouped_data
+                interpretation = interpret_grouped_data(st.session_state.grouped)
                 st.write("ChatGPT の解釈:")
                 st.write(interpretation)
         except Exception as e:
             st.error(f"GPTによる分析中にエラーが発生しました: {e}")
+
+
