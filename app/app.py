@@ -32,7 +32,7 @@ with tabs[0]:
     if st.button("判断軸分析の実行"):
         with st.spinner("分析の実行中"):
             # 変換済みデータを取得(idをドロップしていないデータ)DataFrame ではなくタプルを返している
-            # 返り値を2つの変数にアンパックしていないと、df_encoded がタプルになる
+            # transform_data()では2つの返り値が存在し、返り値を2つの変数にアンパックしていないと、df_encoded がタプルになる
             df_encoded, df_encoded_with_id = transform_data()
             
             # フィルタリング：店舗と商品カテゴリに合致するデータのみを抽出
@@ -66,13 +66,63 @@ with tabs[0]:
                 y = df_cluster["cluster_ms"].astype(str)
                 fig_cm, class_rep, feature_importances = evaluate_random_forest_classifier(X, y)
                 
+            # 年齢毎の分析を実施するためにプロットを取得する
+            cluster_age_stats, fig_box, grouped, corr_matrix, fig_corr, cluster_age_corr_df = get_age_analysis_plots(df_cluster)
+            
+            # Tab1用のセッション変数に保存（タブ4と衝突しないように _tab1 を付与）
+            st.session_state.df_cluster_tab1 = df_cluster
+            st.session_state.tsne_ms_fig_tab1 = tsne_ms_fig
+            st.session_state.parallel_fig_tab1 = parallel_fig
+            st.session_state.n_clusters_ms_tab1 = n_clusters_ms
+            st.session_state.fig_cm_tab1 = fig_cm
+            st.session_state.class_rep_tab1 = class_rep
+            st.session_state.feature_importances_tab1 = feature_importances
+            st.session_state.cluster_age_stats_tab1 = cluster_age_stats
+            st.session_state.fig_box_tab1 = fig_box
+            st.session_state.grouped_tab1 = grouped
+            st.session_state.corr_matrix_tab1 = corr_matrix
+            st.session_state.fig_corr_tab1 = fig_corr
+            st.session_state.cluster_age_corr_df_tab1 = cluster_age_corr_df
+
+            # 分析完了をフラグとして保存
+            st.session_state.analysis_done_tab1 = True
+
+
         st.success("分析が完了しました。")
-        st.write(f"MeanShiftの推定クラスタ数: {n_clusters_ms}")
-        st.pyplot(tsne_ms_fig)
-        st.pyplot(parallel_fig)
-        st.pyplot(fig_cm)
-        st.text(class_rep)
-        st.dataframe(feature_importances)
+
+    # 分析結果を表示するためのコンテナ（分析実行後は内容が保持される）
+    analysis_container = st.container()
+    if "analysis_done_tab1" in st.session_state:
+        with analysis_container:
+            st.write(f"MeanShiftの推定クラスタ数: {st.session_state.n_clusters_ms_tab1}")
+            st.pyplot(st.session_state.tsne_ms_fig_tab1)
+            st.pyplot(st.session_state.parallel_fig_tab1)
+            st.pyplot(st.session_state.fig_cm_tab1)
+            st.text(st.session_state.class_rep_tab1)
+            st.dataframe(st.session_state.feature_importances_tab1)
+
+            st.write("各クラスタの年齢統計:")
+            st.dataframe(st.session_state.cluster_age_stats_tab1)
+            st.pyplot(st.session_state.fig_box_tab1)
+            st.write("年齢層ごとのアンケート結果と年齢の平均:")
+            st.dataframe(st.session_state.grouped_tab1)
+            st.write("相関行列:")
+            st.dataframe(st.session_state.corr_matrix_tab1)
+            st.pyplot(st.session_state.fig_corr_tab1)
+            st.write("各クラスタにおける年齢と他因子の相関:")
+            st.dataframe(st.session_state.cluster_age_corr_df_tab1)
+
+
+    # GPTボタンは、分析結果の表示（analysis_container）がある場合にのみ表示する
+    if "grouped_tab1" in st.session_state or ("analysis_done_tab1" in st.session_state and st.session_state.grouped_tab1 is not None):
+        st.write("GPTによる grouped データ分析は判断軸分析の実行後にクリックしてください")
+        if st.button("GPTによる年齢データ分析レポートを出力"):
+            try:
+                interpretation = interpret_grouped_data(st.session_state.grouped_tab1)
+                st.write("ChatGPT の解釈（Tab1）:")
+                st.write(interpretation)
+            except Exception as e:
+                st.error(f"GPTによる分析中にエラーが発生しました: {e}")
 
 
 # タブ2: 店員呼び出し分析
