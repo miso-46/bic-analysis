@@ -6,6 +6,8 @@ from data_merge import merge_data
 from data_modify import transform_data
 from ml_model import get_correlation_heatmap, get_vif, get_tsne_plot, meanshift_clustering, evaluate_random_forest_classifier,get_age_analysis_plots
 from chatgpt import interpret_grouped_data
+from sales_call_merge import merge_sales_call_and_reception
+from sales_call_analysis import analyze_sales_call_time
 
 st.title("接客データ分析アプリ")
 
@@ -127,7 +129,13 @@ with tabs[0]:
 
 # タブ2: 店員呼び出し分析
 with tabs[1]:
-    st.write("ここに店員呼び出し分析のコンテンツを追加します。")
+    if st.button("店員呼び出しのヒートマップ分析"):
+        df_merged = merge_sales_call_and_reception(store, category)
+        if df_merged.empty:
+            st.error("sales_call と reception を JOIN した結果がありません。")
+        else:
+            fig = analyze_sales_call_time(df_merged)
+            st.pyplot(fig)
 
 # タブ3: DB接続確認
 with tabs[2]:

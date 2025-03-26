@@ -31,3 +31,12 @@ class Answer_info(Base):
     answer_boolean = Column(Boolean, nullable=True)
     answer_categorical = Column(String(255), nullable=True)
 
+
+# salse_callテーブル
+class Sales_call(Base):
+    __tablename__ ="sales_call"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    reception_id = Column(Integer, ForeignKey("reception.id", ondelete="CASCADE"), nullable=False, index=True)
+    #category_id = Column(Integer, ForeignKey("question.id", ondelete="SET NULL"), nullable=True)
+    #store_id = Column(Integer, ForeignKey("store.id"), nullable=True, index=True)
+    time = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"), nullable=True)
