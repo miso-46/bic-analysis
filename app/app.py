@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+
 from data_access import get_data
 from options import get_store_options, get_category_options
 from data_merge import merge_data
@@ -8,6 +9,20 @@ from ml_model import get_correlation_heatmap, get_vif, get_tsne_plot, meanshift_
 from chatgpt import interpret_grouped_data
 from sales_call_merge import merge_sales_call_and_reception
 from sales_call_analysis import analyze_sales_call_time
+from auth_utils import login_page
+
+
+# ===== ログインチェック =====
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+
+if not st.session_state["logged_in"]:
+    # ログイン画面のみを表示して終了
+
+    login_page()
+    st.stop()  # ここで終了し、下のメイン画面コードは実行されない
+# ===== ログイン済みの場合 =====
+
 
 st.title("接客データ分析アプリ")
 
