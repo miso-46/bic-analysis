@@ -9,18 +9,23 @@ from ml_model import get_correlation_heatmap, get_vif, get_tsne_plot, meanshift_
 from chatgpt import interpret_grouped_data
 from sales_call_merge import merge_sales_call_and_reception
 from sales_call_analysis import analyze_sales_call_time
-from auth_utils import login_page
+from auth_utils import login_page, register_store
 
 
 # ===== ログインチェック =====
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 
-if not st.session_state["logged_in"]:
-    # ログイン画面のみを表示して終了
+# サイドバーにログイン/新規登録の選択肢を追加
+if not st.session_state.get("logged_in", False):
+    auth_option = st.sidebar.radio("認証オプション", ("ログイン", "新規登録"))
 
-    login_page()
-    st.stop()  # ここで終了し、下のメイン画面コードは実行されない
+if not st.session_state["logged_in"]:
+    if auth_option == "ログイン":
+        login_page()
+    else:
+        register_store()
+    st.stop()  # ログイン状態になっていない場合はここで処理を終了
 # ===== ログイン済みの場合 =====
 
 
@@ -34,10 +39,14 @@ store = st.sidebar.selectbox("店舗を選択", store_options)
 category_options = get_category_options()
 category = st.sidebar.selectbox("家電カテゴリを選択", category_options)
 
-# # 分析実行ボタン
-# if st.sidebar.button("分析を実行"):
-#     st.sidebar.write("選択された店舗:", store)
-#     st.sidebar.write("選択された家電カテゴリ:", category)
+# ログイン済みの場合、サイドバーにログアウトボタンを表示
+if st.session_state.get("logged_in", False):
+    if st.sidebar.button("ログアウト"):
+        st.session_state["logged_in"] = False
+        try:
+            st.rerun()
+        except Exception as e:
+            st.error("ページの再実行がサポートされていません。ブラウザの再読み込みをしてください。")
 
 # タブを用意
 tabs = st.tabs(["判断軸分析", "店員呼び出し分析", "DB接続確認", "機械学習"])
