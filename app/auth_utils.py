@@ -16,8 +16,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # ログイン機能
 def login_page():
     st.title("店舗ログイン")
-    store_name = st.text_input("店舗名 「大宮」で入れます")
-    plain_password = st.text_input("パスワード 「omiya」で入れます", type="password")
+    store_name = st.text_input("店舗名 「池袋本店」で入れます")
+    plain_password = st.text_input("パスワード 「ikebukuro」で入れます", type="password")
 
     if st.button("ログイン"):
         session = SessionLocal()
